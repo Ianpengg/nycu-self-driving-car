@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+doc/html
+*.cproject
+*.project
+*.settings

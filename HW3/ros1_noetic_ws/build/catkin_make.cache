@@ -1,0 +1,2 @@
+kitti:robot_localization
+-DCATKIN_DEVEL_PREFIX=/home/ee904/ros1_ws/devel -DCMAKE_INSTALL_PREFIX=/home/ee904/ros1_ws/install -G Unix Makefiles

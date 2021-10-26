@@ -1,0 +1,13 @@
+<launch>
+  <node pkg= "rviz" type="rviz" name="rviz" args="-d /home/ee904/sdc_hw.rviz"/>
+  <node pkg= "rosbag" type="play" name="rosbagplay" args="/home/ee904/Downloads/sdc_hw3_noetic.bag --clock"/> 
+  <node pkg="robot_localization" type="ukf_localization_node" name="ukf_se" clear_params="true">
+    <rosparam command="load" file="$(find robot_localization)/params/ukf_template.yaml" />
+    <param name="use_sim_time" value = "true" />
+    <!--  Placeholder for output topic remapping
+    <remap from="odometry/filtered" to=""/>
+    <remap from="accel/filtered" to=""/>
+    -->
+
+  </node>
+</launch>

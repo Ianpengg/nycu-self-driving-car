@@ -34,3 +34,8 @@ doc/html
 *.cproject
 *.project
 *.settings
+maps/
+bags/
+devel/
+build/
+.vscode/

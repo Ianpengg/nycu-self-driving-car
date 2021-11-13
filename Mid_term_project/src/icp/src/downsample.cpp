@@ -32,7 +32,7 @@ int main (int argc, char** argv)
   std::cerr << "PointCloud after filtering: " << cloud_filtered->width * cloud_filtered->height
        << " data points (" << pcl::getFieldsList (*cloud_filtered) << ")." << std::endl;
   pcl::PCDWriter writer;
-  writer.write ("src/maps/nuscene_downsample.pcd", *cloud_filtered,
+  writer.write ("src/maps/nuscene3_downsample.pcd", *cloud_filtered,
          Eigen::Vector4f::Zero (), Eigen::Quaternionf::Identity (), false);
 
   printf("Downsample and write Done\n");

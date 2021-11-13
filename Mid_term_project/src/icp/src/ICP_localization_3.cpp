@@ -51,7 +51,7 @@ Localization::Localization() {
   // load the LiDAR map & readin
   map.reset(new pcl::PointCloud<pcl::PointXYZI>);
 
-  if (pcl::io::loadPCDFile<pcl::PointXYZI> ("src/maps/nuscene_downsample.pcd", *map) == -1) 
+  if (pcl::io::loadPCDFile<pcl::PointXYZI> ("src/maps/nuscene3_downsample.pcd", *map) == -1) 
   {
     PCL_ERROR ("Couldn't read file map.pcd \n");
     exit(0);
@@ -59,6 +59,19 @@ Localization::Localization() {
   cout << "map size:" << map->size() << endl;
   cout << "---------------------------" << endl;
   
+  pcl::PassThrough<pcl::PointXYZI> pass_map;
+  pass_map.setInputCloud(map);
+  pass_map.setFilterFieldName("x");
+  pass_map.setFilterLimits(1600, 1800);  //left of car is >1700 right of car is <1700
+  pass_map.filter(*map);
+  pass_map.setInputCloud(map);
+  pass_map.setFilterFieldName("y");
+  pass_map.setFilterLimits(800, 1200);  //left of car is >1700 right of car is <1700
+  pass_map.filter(*map);
+
+
+
+
 
   pcl::PCLPointCloud2::Ptr cloud_filtered_z (new pcl::PCLPointCloud2 ());
   pcl::VoxelGrid<pcl::PCLPointCloud2> voxel1;
@@ -76,7 +89,7 @@ Localization::Localization() {
   // publishers and subscribers 
   // If there is any Rviz transform error please try to add / before each topic name 
 
-  sub_lidar_scan = nh.subscribe("lidar_points", 50, &Localization::cb_lidar_scan, this);
+  sub_lidar_scan = nh.subscribe("lidar_points", 100, &Localization::cb_lidar_scan, this);
   pub_pc_after_icp = nh.advertise<sensor_msgs::PointCloud2>("pc_after_icp", 50);
   pub_result_odom = nh.advertise<nav_msgs::Odometry>("result_odom", 50);
   pub_map = nh.advertise<sensor_msgs::PointCloud2>("map", 50);

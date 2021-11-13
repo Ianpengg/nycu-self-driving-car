@@ -17,12 +17,12 @@
 #include <fstream>
 #include <string>
 #include <sstream>
-#include <sensor_msgs/Imu.h>
+
 
 using namespace ros;
 using namespace std;
 
-class icp_localization {
+class Localization {
   private:
     ros::Subscriber sub_map, sub_lidar_scan;
     ros::Publisher pub_pc_after_icp, pub_result_odom, pub_map;
@@ -31,22 +31,23 @@ class icp_localization {
     sensor_msgs::PointCloud2 map_cloud;
     pcl::PointCloud<pcl::PointXYZI>::Ptr map;
     pcl::VoxelGrid<pcl::PointXYZI> map_voxel;
+
     tf::TransformListener listener;
     tf::TransformBroadcaster broadcaster;
+
     Eigen::Matrix4f initial_guess;
     Eigen::Quaterniond q;
     ofstream outFile;
-    int cb_time=0;
+    int pub_count=0;
 
   public:
-    icp_localization();
+    Localization();
     Eigen::Matrix4f get_initial_guess();
     Eigen::Matrix4f get_transfrom(std::string link_name);
     void cb_lidar_scan(const sensor_msgs::PointCloud2 &msg);
-    void cb_gps(const geometry_msgs::PoseStamped &msg);
 };
 
-icp_localization::icp_localization() {
+Localization::Localization() {
   // load the LiDAR map & readin
   map.reset(new pcl::PointCloud<pcl::PointXYZI>);
 
@@ -57,20 +58,16 @@ icp_localization::icp_localization() {
   }
   cout << "map size:" << map->size() << endl;
   cout << "---------------------------" << endl;
-  
-  pcl::PassThrough<pcl::PointXYZI> pass1;
-  pass1.setInputCloud(map);
-  pass1.setFilterFieldName("y");
-  pass1.setFilterLimits(0, 950.0);
-  pass1.filter(*map);//儲存處理之後的點雲
-  // pass1.setInputCloud(map);
-  // pass1.setFilterFieldName("z");
-  // pass1.setFilterLimits(1, 7.0);
-  // pass1.filter(*map);//儲存處理之後的點雲
+  //=====================PassThrough Filter==================================
+  // Cut the map with passthrough filter to lower the computation time
+  pcl::PassThrough<pcl::PointXYZI> pass;
+  pass.setInputCloud(map);
+  pass.setFilterFieldName("y");
+  pass.setFilterLimits(0, 950.0);
+  pass.filter(*map);
+  cout<<"Passthrough filter: "<<map->points.size()<<endl;
 
 
-  // cout << "map size:" << map->size() << endl;
-  // cout << "---------------------------" << endl;
   pcl::PCLPointCloud2::Ptr cloud_filtered_z (new pcl::PCLPointCloud2 ());
   pcl::VoxelGrid<pcl::PCLPointCloud2> voxel1;
   pcl::toPCLPointCloud2(*map, *cloud_filtered_z);
@@ -80,18 +77,14 @@ icp_localization::icp_localization() {
   voxel1.setLeafSize (0.01f, 0.01f, 0.01f);
   voxel1.filter (*cloud_filtered_z);
   pcl::fromPCLPointCloud2(*cloud_filtered_z, *map);
-  cout<<"Passthrough filter: "<<map->points.size()<<endl;
-
-
+  cout<<"Voxel grid filter: "<<map->points.size()<<endl;
   pcl::toROSMsg(*map, map_cloud);
 
 
+  // publishers and subscribers 
+  // If there is any Rviz transform error please try to add / before each topic name 
 
-
-
-
-
-  sub_lidar_scan = nh.subscribe("lidar_points", 50, &icp_localization::cb_lidar_scan, this);
+  sub_lidar_scan = nh.subscribe("lidar_points", 50, &Localization::cb_lidar_scan, this);
   pub_pc_after_icp = nh.advertise<sensor_msgs::PointCloud2>("pc_after_icp", 50);
   pub_result_odom = nh.advertise<nav_msgs::Odometry>("result_odom", 50);
   pub_map = nh.advertise<sensor_msgs::PointCloud2>("map", 50);
@@ -108,12 +101,12 @@ icp_localization::icp_localization() {
 			            0,        0,         1,  init_z,
 			            0,        0,         0,  1;
   outFile.open("Q2result.csv", ios::out);
-  outFile << "id,x,y,z,yaw,pitch,roll"<< endl;
+  outFile << "id,x,y,z,yaw,pitch,roll" << endl;
   printf("init done \n");
 }
 
-
-Eigen::Matrix4f icp_localization::get_transfrom(std::string link_name){
+//===============Frame conversion from nuscenes_lidar to car====================
+Eigen::Matrix4f Localization::get_transfrom(std::string link_name){
 	tf::StampedTransform transform;
 	Eigen::Matrix4f trans;
 
@@ -138,54 +131,51 @@ Eigen::Matrix4f icp_localization::get_transfrom(std::string link_name){
 
 
 
-void icp_localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
-  /*In this section I downsamaple the scan of the pointcloud using voxel grid filter
-  to reduce the computation time.  
-  */
-  
+void Localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
+ 
   pcl::PointCloud<pcl::PointXYZI>::Ptr bag_pointcloud(new pcl::PointCloud<pcl::PointXYZI>);
+  pcl::PCLPointCloud2::Ptr bag_cloud_filtered (new pcl::PCLPointCloud2 ());
 
 
   Eigen::Matrix4f trans = get_transfrom("nuscenes_lidar");
   pcl::fromROSMsg(msg, *bag_pointcloud);
 	transformPointCloud (*bag_pointcloud, *bag_pointcloud, trans);
 
-  //display the infos 
+  
   ROS_INFO("transformed to car");
-  cout<<"original: "<<bag_pointcloud->points.size()<<endl;
+  cout << "original: " << bag_pointcloud->points.size() << endl;
 
-
-  pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_filtered1(new pcl::PointCloud<pcl::PointXYZI>);
-
-  pcl::PCLPointCloud2::Ptr bag_cloud_filtered (new pcl::PCLPointCloud2 ());
 
 
 
   //=======================Voxelgrid filter=====================================
   pcl::toPCLPointCloud2(*bag_pointcloud, *bag_cloud_filtered);
   pcl::VoxelGrid<pcl::PCLPointCloud2> voxel;
+  
   voxel.setInputCloud (bag_cloud_filtered);
-  // voxel.setFilterFieldName("x");
-  // voxel.setFilterLimits(-30.0, 30.0);
   voxel.setLeafSize (0.2f, 0.2f, 0.2f);
   voxel.filter (*bag_cloud_filtered);
   pcl::fromPCLPointCloud2(*bag_cloud_filtered, *bag_pointcloud);
   cout<<"voxel grid filter: "<<bag_pointcloud->points.size()<<endl;
   
+  //=======================PassThrough filter===================================
+  //=======================Filter Z direction===================================
+  pcl::PassThrough<pcl::PointXYZI> pass1;
+  pass1.setInputCloud(bag_pointcloud);
+  pass1.setFilterFieldName("z");
+  pass1.setFilterLimits(1, 6);
+  pass1.filter(*bag_pointcloud);
+  cout<<"Passthrough filter: "<<bag_pointcloud->points.size()<<endl;
 
-  pcl::PassThrough<pcl::PointXYZI> pass;
-  pass.setInputCloud(bag_pointcloud);
-  pass.setFilterFieldName("z");
-  pass.setFilterLimits(1, 6);
-  pass.filter(*bag_pointcloud);//儲存處理之後的點雲
+  //=======================PassThrough filter===================================
+  //=======================Filter Y direction===================================
+  pass1.setInputCloud(bag_pointcloud);
+  pass1.setFilterFieldName("y");
+  pass1.setFilterLimits(-30.0, 40.0);
+  pass1.filter(*bag_pointcloud);
   
-  cout<<"voxel grid filter: "<<bag_pointcloud->points.size()<<endl;
-  pcl::PassThrough<pcl::PointXYZI> pass2;
-  pass2.setInputCloud(bag_pointcloud);
-  pass2.setFilterFieldName("y");
-  pass2.setFilterLimits(-30.0, 40.0);
-  pass2.filter(*bag_pointcloud);//儲存處理之後的點雲
 
+  //=====================ICP Implementation=====================================
   pcl::IterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI> icp;
   icp.setInputSource(bag_pointcloud);
   icp.setInputTarget(map);
@@ -194,17 +184,7 @@ void icp_localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
   icp.setMaxCorrespondenceDistance (1);
   icp.setEuclideanFitnessEpsilon (1e-5);
   icp.setRANSACOutlierRejectionThreshold (0.01);
-  // icp.setTransformationEpsilon (1e-8);
-  // icp.setMaxCorrespondenceDistance (15);
-  // icp.setEuclideanFitnessEpsilon (1e-5);
-  
-
-
-
-
-
-
-  
+    
   pcl::PointCloud<pcl::PointXYZI> Final;
   icp.align(Final, initial_guess);
 
@@ -215,7 +195,7 @@ void icp_localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
 
 
 
-
+  //=================TF transform broadcaster===================================
   tf::Matrix3x3 tf3d;
   tf3d.setValue((initial_guess(0,0)), (initial_guess(0,1)), (initial_guess(0,2)),
         (initial_guess(1,0)), (initial_guess(1,1)), (initial_guess(1,2)),
@@ -232,13 +212,13 @@ void icp_localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
 
 
   // Publish your lidar scan pointcloud after doing ICP.
-  sensor_msgs::PointCloud2 fin_cloud;
-  pcl::toROSMsg(Final, fin_cloud);
-  fin_cloud.header=msg.header;
-  fin_cloud.header.frame_id = "world";
-  pub_pc_after_icp.publish(fin_cloud);
+  sensor_msgs::PointCloud2 matched_cloud;
+  pcl::toROSMsg(Final, matched_cloud);
+  matched_cloud.header=msg.header;
+  matched_cloud.header.frame_id = "world";
+  pub_pc_after_icp.publish(matched_cloud);
 
-  //=======show map=====================
+    //==========================Show map==========================================
   map_cloud.header.frame_id = "world";
   map_cloud.header.stamp = Time::now();
   pub_map.publish(map_cloud);
@@ -263,7 +243,7 @@ void icp_localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
   pub_result_odom.publish(odom);
 
 
-
+  // Transform the odom message to roll,pitch,yaw
   float linearposx=odom.pose.pose.position.x;
   float linearposy=odom.pose.pose.position.y;
   double quatx= odom.pose.pose.orientation.x;
@@ -277,16 +257,16 @@ void icp_localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
   result.getRPY(roll, pitch, yaw);
 
   
-  cout<< "cb_time=" << cb_time + 1 << endl;
-  outFile << cb_time + 1 <<','<< odom.pose.pose.position.x << ',' << odom.pose.pose.position.y << ',' << odom.pose.pose.position.z <<','<< yaw << ',' << pitch << ',' << roll << endl;
-  cb_time++;
-  if (cb_time==396){
+  cout<< "pub_count=" << pub_count + 1 << endl;
+  outFile << pub_count + 1 << ','<< odom.pose.pose.position.x << ',' << odom.pose.pose.position.y << ',' << odom.pose.pose.position.z <<','<< yaw << ',' << pitch << ',' << roll << endl;
+  pub_count++;
+  if (pub_count==396){
     cout<<"close file"<<endl;
     outFile.close();
   }
 }
 int main(int argc, char** argv) {
-  ros::init(argc, argv, "icp_localization");
-  icp_localization icp;
+  ros::init(argc, argv, "Localization");
+  Localization icp;
   ros::spin();
 }

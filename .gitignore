@@ -39,3 +39,6 @@ bags/
 devel/
 build/
 .vscode/
+*.bag
+*.pcd
+*.db3

@@ -18,7 +18,7 @@ int main (int argc, char** argv)
   // Fill in the cloud data
   pcl::PCDReader reader;
   // Replace the path below with the path where you saved your file
-  reader.read ("src/maps/nuscenes_map.pcd", *cloud); // Remember to download the file first!
+  reader.read ("src/maps/nuscenes_map.pcd", *cloud); 
 
   std::cerr << "PointCloud before filtering: " << cloud->width * cloud->height
        << " data points (" << pcl::getFieldsList (*cloud) << ")." << std::endl;
@@ -31,12 +31,6 @@ int main (int argc, char** argv)
 
   std::cerr << "PointCloud after filtering: " << cloud_filtered->width * cloud_filtered->height
        << " data points (" << pcl::getFieldsList (*cloud_filtered) << ")." << std::endl;
-
-  pcl::PassThrough<pcl::PCLPointCloud2> pass1;
-  pass1.setInputCloud(cloud_filtered);
-  pass1.setFilterFieldName("x");
-  pass1.setFilterLimits(1650.0, 2100.0);
-  pass1.filter(*cloud_filtered);//儲存處理之後的點雲
   pcl::PCDWriter writer;
   writer.write ("src/maps/nuscene_downsample.pcd", *cloud_filtered,
          Eigen::Vector4f::Zero (), Eigen::Quaternionf::Identity (), false);

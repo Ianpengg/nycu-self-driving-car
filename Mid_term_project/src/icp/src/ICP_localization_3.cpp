@@ -266,7 +266,7 @@ void Localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
 
   
   cout<< "cb_time=" << cb_time + 1 << endl;
-  outFile << cb_time + 1 <<','<< odom.pose.pose.position.x << ',' << odom.pose.pose.position.y << ',' << odom.pose.pose.position.z <<','<< yaw << ',' << pitch << ',' << roll << endl;
+  outFile << cb_time + 1 <<','<< odom.pose.pose.position.x << ',' << odom.pose.pose.position.y << ',' << 0 <<','<< yaw << ',' << pitch << ',' << roll << endl;
   cb_time++;
   if (cb_time==389){
     cout<<"close file"<<endl;

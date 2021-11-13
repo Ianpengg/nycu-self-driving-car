@@ -84,7 +84,7 @@ Localization::Localization() {
   int init_x= -285.456721951;
   int init_y= 225.77162962;
   int init_z= -12.4146628257;
-  double yaw=2.45 ;
+  double yaw=2.41 ;
   initial_guess<< cos(yaw), -sin(yaw), 0,  init_x,
                   sin(yaw), cos(yaw),  0,  init_y,
 			            0,        0,         1,  init_z,
@@ -142,7 +142,7 @@ void Localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
   pcl::toPCLPointCloud2(*bag_pointcloud, *bag_cloud_filtered);
   pcl::VoxelGrid<pcl::PCLPointCloud2> voxel;
   voxel.setInputCloud (bag_cloud_filtered);
-  voxel.setLeafSize (0.15f, 0.15f, 0.15f);
+  voxel.setLeafSize (0.14f, 0.14f, 0.14f);
   voxel.filter (*bag_cloud_filtered);
   pcl::fromPCLPointCloud2(*bag_cloud_filtered, *bag_pointcloud);
   cout << "voxel grid filter: " << bag_pointcloud->points.size() << endl;
@@ -174,7 +174,7 @@ void Localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
   icp.setTransformationEpsilon (1e-13);
   icp.setMaxCorrespondenceDistance (1);
   icp.setEuclideanFitnessEpsilon (1e-5);
-  icp.setRANSACOutlierRejectionThreshold (0.01);
+  icp.setRANSACOutlierRejectionThreshold (0.02);
   
   pcl::PointCloud<pcl::PointXYZI> Final;
   icp.align(Final, initial_guess);

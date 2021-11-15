@@ -100,10 +100,10 @@ Localization::Localization() {
 
   // Initial guess
   
-  int init_x= 1716.4046600430754;
-  int init_y= 1014.5016419273459;
+  int init_x= 1718.4046600430754;
+  int init_y= 1016.1016419273459;
   int init_z= -0.36563915501062233;
-  double yaw=-2.2 ;
+  double yaw=-2.189 ;
   initial_guess<< cos(yaw), -sin(yaw), 0,  init_x,
                   sin(yaw), cos(yaw),  0,  init_y,
 			            0,        0,         1,  init_z,

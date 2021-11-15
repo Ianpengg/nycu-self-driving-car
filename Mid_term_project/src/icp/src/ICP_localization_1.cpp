@@ -51,7 +51,7 @@ Localization::Localization() {
   // load the LiDAR map & readin
   map.reset(new pcl::PointCloud<pcl::PointXYZI>);
 
-  if (pcl::io::loadPCDFile<pcl::PointXYZI> ("src/maps/map_downsample.pcd", *map) == -1) 
+  if (pcl::io::loadPCDFile<pcl::PointXYZI> ("src/maps/itri_downsample.pcd", *map) == -1) 
   {
     PCL_ERROR ("Couldn't read file map.pcd \n");
     exit(0);
@@ -64,7 +64,7 @@ Localization::Localization() {
   pcl::PassThrough<pcl::PointXYZI> pass;
   pass.setInputCloud (map);
   pass.setFilterFieldName ("x");
-  pass.setFilterLimits (-1000, 50);
+  pass.setFilterLimits (-700, -200);
   pass.filter (*map);
   cout<<"Passthrough filter: "<<map->points.size()<<endl;
   pcl::toROSMsg(*map, map_cloud);
@@ -148,24 +148,6 @@ void Localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
   cout << "voxel grid filter: " << bag_pointcloud->points.size() << endl;
 
 
-  // //=======================PassThrough filter===================================
-  // //=======================Filter X direction===================================
-  // pcl::PassThrough<pcl::PointXYZI> pass;
-  // pass.setInputCloud(bag_pointcloud);
-  // pass.setFilterFieldName("x");
-  // pass.setFilterLimits(-20.0, 130.0);
-  // pass.filter(*bag_pointcloud);
-  // cout<<"Passthrough filter: "<<bag_pointcloud->points.size()<<endl;
-
-
-  // //=======================PassThrough filter===================================
-  // //=======================Filter Y direction===================================
-  // pass.setInputCloud(bag_pointcloud);
-  // pass.setFilterFieldName("y");
-  // pass.setFilterLimits(-20.0, 40.0);
-  // pass.filter(*bag_pointcloud);
-
-
   //=====================ICP Implementation=====================================
   pcl::IterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI> icp;
   icp.setInputSource(bag_pointcloud);
@@ -213,7 +195,7 @@ void Localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
   map_cloud.header.frame_id = "world";
   map_cloud.header.stamp = Time::now();
   pub_map.publish(map_cloud);
-
+  
   // Publish localization result as nav_msgs/Odometry.msg message type.
   nav_msgs::Odometry odom;
   odom.header.frame_id = "world";

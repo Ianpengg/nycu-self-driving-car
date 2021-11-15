@@ -84,7 +84,7 @@ Localization::Localization() {
   int init_x= -285.456721951;
   int init_y= 225.77162962;
   int init_z= -12.4146628257;
-  double yaw=2.41 ;
+  double yaw=2.43;
   initial_guess<< cos(yaw), -sin(yaw), 0,  init_x,
                   sin(yaw), cos(yaw),  0,  init_y,
 			            0,        0,         1,  init_z,
@@ -142,28 +142,28 @@ void Localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
   pcl::toPCLPointCloud2(*bag_pointcloud, *bag_cloud_filtered);
   pcl::VoxelGrid<pcl::PCLPointCloud2> voxel;
   voxel.setInputCloud (bag_cloud_filtered);
-  voxel.setLeafSize (0.14f, 0.14f, 0.14f);
+  voxel.setLeafSize (0.13f, 0.13f, 0.13f);
   voxel.filter (*bag_cloud_filtered);
   pcl::fromPCLPointCloud2(*bag_cloud_filtered, *bag_pointcloud);
   cout << "voxel grid filter: " << bag_pointcloud->points.size() << endl;
 
 
-  //=======================PassThrough filter===================================
-  //=======================Filter X direction===================================
-  pcl::PassThrough<pcl::PointXYZI> pass;
-  pass.setInputCloud(bag_pointcloud);
-  pass.setFilterFieldName("x");
-  pass.setFilterLimits(-20.0, 130.0);
-  pass.filter(*bag_pointcloud);
-  cout<<"Passthrough filter: "<<bag_pointcloud->points.size()<<endl;
+  // //=======================PassThrough filter===================================
+  // //=======================Filter X direction===================================
+  // pcl::PassThrough<pcl::PointXYZI> pass;
+  // pass.setInputCloud(bag_pointcloud);
+  // pass.setFilterFieldName("x");
+  // pass.setFilterLimits(-20.0, 130.0);
+  // pass.filter(*bag_pointcloud);
+  // cout<<"Passthrough filter: "<<bag_pointcloud->points.size()<<endl;
 
 
-  //=======================PassThrough filter===================================
-  //=======================Filter Y direction===================================
-  pass.setInputCloud(bag_pointcloud);
-  pass.setFilterFieldName("y");
-  pass.setFilterLimits(-20.0, 40.0);
-  pass.filter(*bag_pointcloud);
+  // //=======================PassThrough filter===================================
+  // //=======================Filter Y direction===================================
+  // pass.setInputCloud(bag_pointcloud);
+  // pass.setFilterFieldName("y");
+  // pass.setFilterLimits(-20.0, 40.0);
+  // pass.filter(*bag_pointcloud);
 
 
   //=====================ICP Implementation=====================================

@@ -7,6 +7,7 @@ Panels:
         - /Global Options1
         - /Status1
         - /PointCloud21
+        - /PointCloud22
         - /Odometry1
         - /Odometry1/Shape1
       Splitter Ratio: 0.5
@@ -76,7 +77,7 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.10000000149011612
+      Size (m): 0.30000001192092896
       Style: Spheres
       Topic: /map
       Unreliable: false
@@ -104,7 +105,7 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.10000000149011612
+      Size (m): 0.20000000298023224
       Style: Spheres
       Topic: /pc_after_icp
       Unreliable: false
@@ -195,7 +196,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 99.03361511230469
+      Distance: 566.5689086914062
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -203,17 +204,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -15.466129302978516
-        Y: 3.3217597007751465
-        Z: -26.261459350585938
-      Focal Shape Fixed Size: false
+        X: -32.609710693359375
+        Y: -66.69662475585938
+        Z: -79.01007843017578
+      Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.8503979444503784
+      Pitch: 0.7147969603538513
       Target Frame: base_link
-      Yaw: 5.828586101531982
+      Yaw: 0.905001163482666
     Saved: ~
 Window Geometry:
   Displays:

@@ -81,3 +81,7 @@ target_link_libraries(ICP_localization_2 ${catkin_LIBRARIES})
 add_executable(ICP_localization_3 src/ICP_localization_3.cpp )
 add_dependencies(ICP_localization_3 ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencpp)
 target_link_libraries(ICP_localization_3 ${catkin_LIBRARIES})
+
+add_executable(NDT_localization_3 src/NDT_localization_3.cpp )
+add_dependencies(NDT_localization_3 ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencpp)
+target_link_libraries(NDT_localization_3 ${catkin_LIBRARIES})

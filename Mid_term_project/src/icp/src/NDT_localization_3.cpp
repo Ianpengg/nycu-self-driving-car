@@ -8,6 +8,7 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/conversions.h>
 #include <pcl/registration/icp.h>
+#include <pcl/registration/ndt.h>
 #include <tf/transform_broadcaster.h>
 #include <pcl_ros/transforms.h>
 #include <pcl/filters/radius_outlier_removal.h>
@@ -25,7 +26,7 @@ using namespace std;
 class Localization {
   private:
     ros::Subscriber sub_map, sub_lidar_scan;
-    ros::Publisher pub_pc_after_icp, pub_result_odom, pub_map;
+    ros::Publisher pub_pc_after_icp, pub_result_odom, pub_map,pub_init_pc;
     ros::NodeHandle nh;
 
     sensor_msgs::PointCloud2 map_cloud;
@@ -79,7 +80,7 @@ Localization::Localization() {
   voxel1.setInputCloud (cloud_filtered_z);
   voxel1.setFilterFieldName ("z");
   voxel1.setFilterLimits (1, 7);
-  voxel1.setLeafSize (0.01f, 0.01f, 0.01f);
+  voxel1.setLeafSize (0.5f, 0.5f, 0.5f);
   voxel1.filter (*cloud_filtered_z);
   pcl::fromPCLPointCloud2(*cloud_filtered_z, *map);
   cout<<"Voxel grid filter: "<<map->points.size()<<endl;
@@ -90,6 +91,7 @@ Localization::Localization() {
   // If there is any Rviz transform error please try to add / before each topic name 
 
   sub_lidar_scan = nh.subscribe("lidar_points", 100, &Localization::cb_lidar_scan, this);
+  pub_init_pc = nh.advertise<sensor_msgs::PointCloud2>("init_pc", 50);
   pub_pc_after_icp = nh.advertise<sensor_msgs::PointCloud2>("pc_after_icp", 50);
   pub_result_odom = nh.advertise<nav_msgs::Odometry>("result_odom", 50);
   pub_map = nh.advertise<sensor_msgs::PointCloud2>("map", 50);
@@ -101,7 +103,7 @@ Localization::Localization() {
   int init_x= 1716.4046600430754;
   int init_y= 1014.5016419273459;
   int init_z= -0.36563915501062233;
-  double yaw=-2.3 ;
+  double yaw=-2.2 ;
   initial_guess<< cos(yaw), -sin(yaw), 0,  init_x,
                   sin(yaw), cos(yaw),  0,  init_y,
 			            0,        0,         1,  init_z,
@@ -136,32 +138,33 @@ Eigen::Matrix4f Localization::get_transfrom(std::string link_name){
 
 
 
-
 void Localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
    
   pcl::PointCloud<pcl::PointXYZI>::Ptr bag_pointcloud(new pcl::PointCloud<pcl::PointXYZI>);
   pcl::PCLPointCloud2::Ptr bag_cloud_filtered (new pcl::PCLPointCloud2 ());
-
+  pcl::PointCloud<pcl::PointXYZI>::Ptr init_cloud(new pcl::PointCloud<pcl::PointXYZI>);
 
   Eigen::Matrix4f trans = get_transfrom("nuscenes_lidar");
   pcl::fromROSMsg(msg, *bag_pointcloud);
 	transformPointCloud (*bag_pointcloud, *bag_pointcloud, trans);
-
+  transformPointCloud (*bag_pointcloud, *init_cloud, initial_guess);
   
   ROS_INFO("transformed to car");
   cout << "original: " << bag_pointcloud->points.size() << endl;
 
+  
 
 
-
+  
   //=======================Voxelgrid filter=====================================
-  pcl::toPCLPointCloud2(*bag_pointcloud, *bag_cloud_filtered);
-  pcl::VoxelGrid<pcl::PCLPointCloud2> voxel;
+  pcl::VoxelGrid<pcl::PointXYZI> voxel;
+  voxel.setInputCloud (bag_pointcloud);
+  voxel.setLeafSize (0.5f, 0.5f, 0.5f);
+  voxel.filter (*bag_pointcloud);
 
-  voxel.setInputCloud (bag_cloud_filtered);
-  voxel.setLeafSize (0.2f, 0.2f, 0.2f);
-  voxel.filter (*bag_cloud_filtered);
-  pcl::fromPCLPointCloud2(*bag_cloud_filtered, *bag_pointcloud);
+  voxel.setInputCloud (init_cloud);
+  voxel.filter (*init_cloud);
+
   cout<<"voxel grid filter: "<<bag_pointcloud->points.size()<<endl;
   
   //=======================PassThrough filter===================================
@@ -172,35 +175,37 @@ void Localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
   pass.setFilterLimits(1, 6);
   pass.filter(*bag_pointcloud);
   
+  pass.setInputCloud(init_cloud);
+  pass.filter(*init_cloud);
+
   cout<<"Passthrough filter: "<<bag_pointcloud->points.size()<<endl;
 
   //=======================PassThrough filter===================================
   //=======================Filter Y direction===================================
-  pass.setInputCloud(bag_pointcloud);
-  pass.setFilterFieldName("y");
-  pass.setFilterLimits(-30.0, 40.0);
-  pass.filter(*bag_pointcloud);
+  // pass.setInputCloud(bag_pointcloud);
+  // pass.setFilterFieldName("y");
+  // pass.setFilterLimits(-30.0, 40.0);
+  // pass.filter(*bag_pointcloud);
 
 
-  //=====================ICP Implementation=====================================
-  pcl::IterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI> icp;
-  icp.setInputSource(bag_pointcloud);
-  icp.setInputTarget(map);
-  icp.setMaximumIterations (1000);
-  icp.setTransformationEpsilon (1e-13);
-  icp.setMaxCorrespondenceDistance (1);
-  icp.setEuclideanFitnessEpsilon (1e-5);
-  icp.setRANSACOutlierRejectionThreshold (0.01);
   
-  
+  pcl::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI> ndt;
+
+  ndt.setTransformationEpsilon (0.01);
+  ndt.setStepSize (1.2);
+  ndt.setResolution (1.0);
+  ndt.setMaximumIterations (35);
+  ndt.setInputSource (bag_pointcloud);
+  ndt.setMaxCorrespondenceDistance (1);
+  ndt.setInputTarget (map);
+ 
   pcl::PointCloud<pcl::PointXYZI> Final;
-  icp.align(Final, initial_guess);
+  ndt.align(Final, initial_guess);
 
-  std::cout << "has converged:" << icp.hasConverged() << " score: " <<
-  icp.getFitnessScore() << std::endl;
-  std::cout << icp.getFinalTransformation() << std::endl;
-  initial_guess = icp.getFinalTransformation();
-
+  std::cout << "has converged:" << ndt.hasConverged() << " score: " <<
+  ndt.getFitnessScore() << std::endl;
+  std::cout << ndt.getFinalTransformation() << std::endl;
+  initial_guess = ndt.getFinalTransformation();
   
 
   //=================TF transform broadcaster===================================
@@ -227,6 +232,12 @@ void Localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
   matched_cloud.header.frame_id = "world";
   pub_pc_after_icp.publish(matched_cloud);
 
+  sensor_msgs::PointCloud2 init_pointcloud;
+  pcl::toROSMsg(*init_cloud, init_pointcloud);
+  init_pointcloud.header=msg.header;
+  init_pointcloud.header.frame_id = "world";
+  pub_init_pc.publish(init_pointcloud);
+  
   //==========================Show map==========================================
   map_cloud.header.frame_id = "world";
   map_cloud.header.stamp = Time::now();

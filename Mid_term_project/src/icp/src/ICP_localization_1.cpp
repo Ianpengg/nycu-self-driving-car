@@ -25,18 +25,20 @@ using namespace std;
 class Localization {
   private:
     ros::Subscriber sub_lidar_scan;
-    ros::Publisher pub_pc_after_icp, pub_result_odom, pub_map;
+    ros::Publisher pub_pc_after_icp, pub_result_odom, pub_map, pub_init_pc;
     ros::NodeHandle nh;
 
     sensor_msgs::PointCloud2 map_cloud;
     pcl::PointCloud<pcl::PointXYZI>::Ptr map;
-    pcl::VoxelGrid<pcl::PointXYZI> map_voxel;
+   
 
     tf::TransformListener listener;
     tf::TransformBroadcaster broadcaster;
 
     Eigen::Matrix4f initial_guess;
     Eigen::Quaterniond q;
+
+    std::string result_save_path,map_path;
     ofstream outFile;
     int pub_count=0;
 
@@ -50,8 +52,8 @@ class Localization {
 Localization::Localization() {
   // load the LiDAR map & readin
   map.reset(new pcl::PointCloud<pcl::PointXYZI>);
-
-  if (pcl::io::loadPCDFile<pcl::PointXYZI> ("src/maps/itri_downsample.pcd", *map) == -1) 
+  nh.getParam("/map_path",map_path);
+  if (pcl::io::loadPCDFile<pcl::PointXYZI> (map_path, *map) == -1) 
   {
     PCL_ERROR ("Couldn't read file map.pcd \n");
     exit(0);
@@ -64,9 +66,13 @@ Localization::Localization() {
   pcl::PassThrough<pcl::PointXYZI> pass;
   pass.setInputCloud (map);
   pass.setFilterFieldName ("x");
-  pass.setFilterLimits (-700, -200);
+  pass.setFilterLimits (-400, -200);
   pass.filter (*map);
   cout<<"Passthrough filter: "<<map->points.size()<<endl;
+  pass.setInputCloud (map);
+  pass.setFilterFieldName ("y");
+  pass.setFilterLimits (100, 400);
+  pass.filter (*map);
   pcl::toROSMsg(*map, map_cloud);
 
 
@@ -74,23 +80,26 @@ Localization::Localization() {
   // If there is any Rviz transform error please try to add / before each topic name 
 
   sub_lidar_scan = nh.subscribe("lidar_points", 400, &Localization::cb_lidar_scan, this);
-  pub_pc_after_icp = nh.advertise<sensor_msgs::PointCloud2>("pc_after_icp", 1);
-  pub_result_odom = nh.advertise<nav_msgs::Odometry>("result_odom", 1);
+  pub_pc_after_icp = nh.advertise<sensor_msgs::PointCloud2>("pc_after_icp", 50);
+  pub_init_pc = nh.advertise<sensor_msgs::PointCloud2>("init_pc", 50);
+  pub_result_odom = nh.advertise<nav_msgs::Odometry>("result_odom", 50);
   pub_map = nh.advertise<sensor_msgs::PointCloud2>("map", 1);
   
 
   // Initial guess
 
   int init_x= -285.456721951;
-  int init_y= 225.77162962;
+  int init_y= 226.77162962;
   int init_z= -12.4146628257;
-  double yaw=2.43;
+  double yaw=2.45;
   initial_guess<< cos(yaw), -sin(yaw), 0,  init_x,
                   sin(yaw), cos(yaw),  0,  init_y,
 			            0,        0,         1,  init_z,
 			            0,        0,         0,  1;
+  
   // write the result to csv file
-  outFile.open("Q1result.csv", ios::out);
+  nh.getParam("/ICP_localization_1/result_save_path",result_save_path);
+  outFile.open(result_save_path, ios::out);
   outFile << "id,x,y,z,yaw,pitch,roll"<< endl;
   printf("init done \n");
 }
@@ -125,12 +134,13 @@ void Localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
     
   pcl::PointCloud<pcl::PointXYZI>::Ptr bag_pointcloud(new pcl::PointCloud<pcl::PointXYZI>);
   pcl::PCLPointCloud2::Ptr bag_cloud_filtered (new pcl::PCLPointCloud2 ());
-
+  pcl::PointCloud<pcl::PointXYZI>::Ptr init_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+  pcl::PCLPointCloud2::Ptr init_cloud_filtered (new pcl::PCLPointCloud2 ());
 
   Eigen::Matrix4f trans = get_transfrom("velodyne");
   pcl::fromROSMsg(msg, *bag_pointcloud);
 	transformPointCloud (*bag_pointcloud, *bag_pointcloud, trans);
-
+  transformPointCloud (*bag_pointcloud, *init_cloud, initial_guess);
   
   ROS_INFO("transformed to base_link");
   cout << "original: " << bag_pointcloud->points.size() << endl;
@@ -140,11 +150,16 @@ void Localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
 
   //=======================Voxelgrid filter=====================================
   pcl::toPCLPointCloud2(*bag_pointcloud, *bag_cloud_filtered);
+  pcl::toPCLPointCloud2(*init_cloud, *init_cloud_filtered);
   pcl::VoxelGrid<pcl::PCLPointCloud2> voxel;
   voxel.setInputCloud (bag_cloud_filtered);
-  voxel.setLeafSize (0.13f, 0.13f, 0.13f);
+  voxel.setLeafSize (0.3f, 0.3f, 0.3f);
   voxel.filter (*bag_cloud_filtered);
+
+  voxel.setInputCloud(init_cloud_filtered);
+  voxel.filter (*init_cloud_filtered);
   pcl::fromPCLPointCloud2(*bag_cloud_filtered, *bag_pointcloud);
+  pcl::fromPCLPointCloud2(*init_cloud_filtered, *init_cloud);
   cout << "voxel grid filter: " << bag_pointcloud->points.size() << endl;
 
 
@@ -153,19 +168,47 @@ void Localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
   icp.setInputSource(bag_pointcloud);
   icp.setInputTarget(map);
   icp.setMaximumIterations (1000);
-  icp.setTransformationEpsilon (1e-13);
+  icp.setTransformationEpsilon (1e-6);
   icp.setMaxCorrespondenceDistance (1);
-  icp.setEuclideanFitnessEpsilon (1e-5);
-  icp.setRANSACOutlierRejectionThreshold (0.02);
+  icp.setEuclideanFitnessEpsilon (1e-6);
   
-  pcl::PointCloud<pcl::PointXYZI> Final;
+  
+  pcl::PointCloud<pcl::PointXYZI> Final ;
+  // pcl::PointCloud<pcl::PointXYZI>::Ptr Final(new pcl::PointCloud<pcl::PointXYZI>);
   icp.align(Final, initial_guess);
-
-  std::cout << "has converged:" << icp.hasConverged() << " score: " <<
-  icp.getFitnessScore() << std::endl;
+  
+  std::cout << "has converged:" << icp.hasConverged() << " score: " << icp.getFitnessScore() << std::endl;
   std::cout << icp.getFinalTransformation() << std::endl;
   initial_guess = icp.getFinalTransformation();
 
+
+  icp.setInputSource(bag_pointcloud);
+  icp.setInputTarget(map);
+  icp.setMaximumIterations (1000);
+  icp.setTransformationEpsilon (1e-8);
+  icp.setMaxCorrespondenceDistance (0.4);
+  icp.setEuclideanFitnessEpsilon (1e-8);
+  
+  icp.align(Final, initial_guess);
+  std::cout << "has converged:" << icp.hasConverged() << " score: " << icp.getFitnessScore() << std::endl;
+  std::cout << icp.getFinalTransformation() << std::endl;
+  initial_guess = icp.getFinalTransformation();
+
+
+
+  // icp.setInputTarget(map);
+  // icp.setMaximumIterations (500);
+  // icp.setInputSource(Final);
+  // icp.setTransformationEpsilon (1e-13);
+  // icp.setMaxCorrespondenceDistance (0.8);
+  // icp.setEuclideanFitnessEpsilon (1e-5);
+  // icp.setRANSACOutlierRejectionThreshold (0.02);
+  // icp.align(Final, initial_guess);
+  // std::cout << "has converged:" << icp.hasConverged() << " score: " << icp.getFitnessScore() << std::endl;
+  // std::cout << icp.getFinalTransformation() << std::endl;
+  // initial_guess = icp.getFinalTransformation();
+
+  
 
 
   //=================TF transform broadcaster===================================
@@ -190,6 +233,12 @@ void Localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
   matched_cloud.header=msg.header;
   matched_cloud.header.frame_id = "world";
   pub_pc_after_icp.publish(matched_cloud);
+  // Publish the initial guess lidar_scan to check the precision of initial guess
+  sensor_msgs::PointCloud2 init_pointcloud;
+  pcl::toROSMsg(*init_cloud, init_pointcloud);
+  init_pointcloud.header=msg.header;
+  init_pointcloud.header.frame_id = "world";
+  pub_init_pc.publish(init_pointcloud);
 
   //==========================Show map==========================================
   map_cloud.header.frame_id = "world";

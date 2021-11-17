@@ -27,16 +27,17 @@ class Localization {
     ros::Subscriber sub_map, sub_lidar_scan;
     ros::Publisher pub_pc_after_icp, pub_result_odom, pub_map;
     ros::NodeHandle nh;
-
     sensor_msgs::PointCloud2 map_cloud;
     pcl::PointCloud<pcl::PointXYZI>::Ptr map;
-    pcl::VoxelGrid<pcl::PointXYZI> map_voxel;
+    
 
     tf::TransformListener listener;
     tf::TransformBroadcaster broadcaster;
 
     Eigen::Matrix4f initial_guess;
     Eigen::Quaterniond q;
+
+    std::string result_save_path,map_path;
     ofstream outFile;
     int cb_time=0;
 
@@ -50,9 +51,10 @@ class Localization {
 Localization::Localization() {
   // load the LiDAR map & readin
   map.reset(new pcl::PointCloud<pcl::PointXYZI>);
-
-  if (pcl::io::loadPCDFile<pcl::PointXYZI> ("src/maps/nuscene3_downsample.pcd", *map) == -1) 
+  nh.getParam("/map_path",map_path);
+  if (pcl::io::loadPCDFile<pcl::PointXYZI> (map_path, *map) == -1) 
   {
+    cout <<map_path<< std::endl;
     PCL_ERROR ("Couldn't read file map.pcd \n");
     exit(0);
   }
@@ -106,7 +108,9 @@ Localization::Localization() {
                   sin(yaw), cos(yaw),  0,  init_y,
 			            0,        0,         1,  init_z,
 			            0,        0,         0,  1;
-  outFile.open("Q3result.csv", ios::out);
+  
+  nh.getParam("/ICP_localization_3/result_save_path",result_save_path);
+  outFile.open(result_save_path, ios::out);
   outFile << "id,x,y,z,yaw,pitch,roll" << endl;
   printf("init done \n");
 }
@@ -200,9 +204,11 @@ void Localization::cb_lidar_scan(const sensor_msgs::PointCloud2 &msg) {
   icp.getFitnessScore() << std::endl;
   std::cout << icp.getFinalTransformation() << std::endl;
   initial_guess = icp.getFinalTransformation();
-
   
-
+  
+ 
+  
+ 
   //=================TF transform broadcaster===================================
 
   tf::Matrix3x3 tf3d;

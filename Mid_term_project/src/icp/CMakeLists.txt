@@ -4,6 +4,15 @@ project(icp)
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++14)
 
+#========= For GPU acceleration (uncomment the below things)====================
+# set(CMAKE_CXX_STANDARD 14)
+# set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# set(CMAKE_CXX_EXTENSIONS OFF)
+# set(CMAKE_BUILD_TYPE Release)
+
+# list(APPEND CMAKE_PREFIX_PATH "/opt/ros/melodic")
+# list(APPEND CMAKE_PREFIX_PATH "/opt/ros/melodic/share/catkin/cmake")
+#===============================================================================
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
@@ -82,6 +91,17 @@ add_executable(ICP_localization_3 src/ICP_localization_3.cpp )
 add_dependencies(ICP_localization_3 ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencpp)
 target_link_libraries(ICP_localization_3 ${catkin_LIBRARIES})
 
-add_executable(NDT_localization_3 src/NDT_localization_3.cpp )
-add_dependencies(NDT_localization_3 ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencpp)
-target_link_libraries(NDT_localization_3 ${catkin_LIBRARIES})
+# add_executable(NDT_localization_3 src/NDT_localization_3.cpp )
+# add_dependencies(NDT_localization_3 ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencpp)
+# target_link_libraries(NDT_localization_3 ${catkin_LIBRARIES})
+
+# add_executable(NDT_localization_1 src/NDT_localization_1.cpp )
+# add_dependencies(NDT_localization_1 ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencpp)
+# target_link_libraries(NDT_localization_1 ${catkin_LIBRARIES})
+
+# GPU acceleration for pcl (Optional)
+# find_package(CUDA REQUIRED)
+# set(CUDA_ARCH "sm_61")
+# set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-arch=${CUDA_ARCH};-std=c++14;--ptxas-options=-v)
+# CUDA_ADD_EXECUTABLE(cuda_test src/cuda_test.cu)
+# target_link_libraries(cuda_test ${catkin_LIBRARIES})

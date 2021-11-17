@@ -5,7 +5,7 @@
 #include<pcl/point_cloud.h>
 #include<pcl_conversions/pcl_conversions.h>
 #include<sensor_msgs/PointCloud2.h>
-#include<pcl/io/pcd_io.h>//which contains the required definitions to load and store point clouds to PCD and other file formats.
+#include<pcl/io/pcd_io.h>
 #include <pcl/filters/passthrough.h>
 int main (int argc, char** argv)
 {
@@ -17,9 +17,10 @@ int main (int argc, char** argv)
 
   // Fill in the cloud data
   pcl::PCDReader reader;
-  // Replace the path below with the path where you saved your file
-  reader.read ("src/maps/itri_map.pcd", *cloud); 
 
+  // There are two origin map, ITRI and Nuscenes, you just need to replace the file_path.
+  //reader.read ("/home/ee904/Documents/nycu-self-driving-car/Mid_term_project/src/icp/maps/nuscenes_map.pcd", *cloud); 
+  reader.read ("/home/ee904/Documents/nycu-self-driving-car/Mid_term_project/src/icp/maps/itri_map.pcd", *cloud); 
   std::cerr << "PointCloud before filtering: " << cloud->width * cloud->height
        << " data points (" << pcl::getFieldsList (*cloud) << ")." << std::endl;
 
@@ -32,9 +33,10 @@ int main (int argc, char** argv)
   std::cerr << "PointCloud after filtering: " << cloud_filtered->width * cloud_filtered->height
        << " data points (" << pcl::getFieldsList (*cloud_filtered) << ")." << std::endl;
   pcl::PCDWriter writer;
-  writer.write ("src/maps/itri_downsample.pcd", *cloud_filtered,
+  //writer.write ("/home/ee904/Documents/nycu-self-driving-car/Mid_term_project/src/icp/maps/nu_downsample.pcd", *cloud_filtered,
+  //       Eigen::Vector4f::Zero (), Eigen::Quaternionf::Identity (), false);
+  writer.write ("/home/ee904/Documents/nycu-self-driving-car/Mid_term_project/src/icp/maps/itri_downsample.pcd", *cloud_filtered,
          Eigen::Vector4f::Zero (), Eigen::Quaternionf::Identity (), false);
-
   printf("Downsample and write Done\n");
 
 }

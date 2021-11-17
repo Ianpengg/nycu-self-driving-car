@@ -1,0 +1,13 @@
+<launch>
+  <arg name="save_path" default="$(find icp)/results/results_2.csv" />
+   <!-- Set the file_path to the path where you store the ...map.pcd -->
+  <param name="map_path" type="string" value="$(find icp)/maps/nuscene3_downsample.pcd" />
+  <node pkg="icp" type="ICP_localization_2" name="ICP_localization_2" output="screen">
+    <rosparam param="result_save_path" subst_value="True">$(arg save_path)</rosparam>
+  </node>
+ <!-- Set the rviz config path to yours  -->
+  <node pkg= "rviz" type="rviz" name="rviz" args="-d $(find icp)/config/mid_2.rviz">
+    <param name="use_sim_time" value = "true" />
+ </node>
+    
+</launch>

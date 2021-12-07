@@ -42,3 +42,6 @@ build/
 *.bag
 *.pcd
 *.db3
+__pycache__/
+.ipynb_checkpoints/
+

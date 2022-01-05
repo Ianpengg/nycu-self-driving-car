@@ -1,19 +1,23 @@
 #!/usr/bin/env python
-
+"""
+@Author: Ian peng
+@E-mail: ian01050@gmail.com
+@Date: 2021/1/5
+"""
 import cv2
 import os
 import rospy
 import pandas as pd
 import json
 from collections import deque
-from argo_tracking.src.python_version.publish_utils import publish_location
+from publish_utils import publish_location
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from sensor_msgs.point_cloud2 import PointCloud2
-from argo_tracking.src.python_version.processing_utils import *
+from processing_utils import *
 from visualization_msgs.msg import Marker, MarkerArray
 
-log_path = rospy.get_param("/viz_result/log_path")
+log_path = rospy.get_param("/viz_photo/log_path")
 label_path = rospy.get_param("/viz_photo/label_path")
 Image_PATH = os.path.join(log_path, "ring_front_center")
 Pose_PATH = os.path.join(log_path, "poses/")
@@ -35,7 +39,11 @@ for idx,data in enumerate((po)):
 
 i = 0
 k = 1
-
+"""
+The following part of visualizing the trajectory of each car and pedestrian is refer to the Youtuber: Ai葵
+The video link is :https://youtu.be/oOBDiKMA9ME
+If you want to know the detail you can check it 
+"""
 class Object():
     def __init__(self,center):
         self.locations = deque(maxlen=20)
@@ -84,7 +92,9 @@ def callback(data, args):
     bridge = CvBridge()
     
     for j in range(3):
+        print(os.path.join(Image_PATH,photo_names[i]))
         img = cv2.imread(os.path.join(Image_PATH,photo_names[i]))
+        print(f"type={type(img)}")
         cam_pub.publish(bridge.cv2_to_imgmsg(img, "bgr8"))
         i = i+1
     # for p in range(1):
@@ -109,15 +119,11 @@ def callback(data, args):
                 tracker[track_id] = Object(centers[track_id])
         for track_id in tracker:    #if object has been tracked past but not detect in the present frame
             if track_id not in centers:
-                print("lost track")
                 tracker[track_id].update(displacement, yaw_change, None)
 
 
-        #ego_car.update(displacement,yaw_change)
-    previous_pose = pose
-    #print(previous_pose)
+    previous_pose = pose    
     previous_rotation = rotation
-    #print(len(tracker))
     publish_location(loc_pub,tracker,centers)
     k = k+1
     
@@ -133,7 +139,7 @@ def readJson(pose_files):
         rotation = np.array(pose_data['rotation'])
         r,p,y = euler_from_quaternion(rotation[0],rotation[1],rotation[2],rotation[3]) 
         # returns Json object as a dictionary
-        
+    
     return pose, y
 
 
@@ -142,7 +148,6 @@ def readJson(pose_files):
 if __name__ == '__main__':
     previous_pose = None
     previous_rotation = None
-    #ego_car = Object()
     tracker = {} # track_id : Object
     
     while not rospy.is_shutdown():

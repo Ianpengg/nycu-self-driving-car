@@ -17,7 +17,7 @@ int main (int argc, char** argv)
   // Fill in the cloud data
   pcl::PCDReader reader;
   // Replace the path below with the path where you saved your file
-  reader.read ("/home/yellow/self-driving-cars-course/SDC_HW4/bag/map.pcd", *cloud); // Remember to download the file first!
+  reader.read ("/home/ee904/Documents/nycu-self-driving-car/HW4/sdc_hw4_bags/map.pcd", *cloud); // Remember to download the file first!
 
   std::cerr << "PointCloud before filtering: " << cloud->width * cloud->height
        << " data points (" << pcl::getFieldsList (*cloud) << ")." << std::endl;
@@ -32,7 +32,7 @@ int main (int argc, char** argv)
        << " data points (" << pcl::getFieldsList (*cloud_filtered) << ")." << std::endl;
 
   pcl::PCDWriter writer;
-  writer.write ("/home/yellow/self-driving-cars-course/SDC_HW4/bag/map_downsample.pcd", *cloud_filtered,
+  writer.write ("/home/ee904/Documents/nycu-self-driving-car/HW4/sdc_hw4_bags/map_downsample.pcd", *cloud_filtered,
          Eigen::Vector4f::Zero (), Eigen::Quaternionf::Identity (), false);
 
   printf("Downsample and write Done\n");

@@ -12,7 +12,7 @@ import std_msgs.msg
 from cv_bridge import CvBridge, CvBridgeError
 import tf as ros_tf # ROS transformation library
 
-from argo_tracking.src.python_version.processing_utils import *
+from processing_utils import *
 
 LINES = [[0, 1], [1, 2], [2, 3], [3, 0]] # lower face
 LINES+= [[4, 5], [5, 6], [6, 7], [7, 4]] # upper face

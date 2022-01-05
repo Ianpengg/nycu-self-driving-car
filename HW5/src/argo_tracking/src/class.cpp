@@ -3,7 +3,8 @@
 #include <stdlib.h>
 
 using namespace std;
-
+// This file is the prototype of the object class
+// the object is created for storing the informations of the tracked objects
 class Object
 {
 public:
@@ -24,17 +25,15 @@ void Object::update(float displacement, float yaw_change, double x, double y) {
 		- displacement -> use present frame's center - previous frame's center calculate Euclidean distance.
 		*/
   for (int i =0; i<location_x.size(); i++) {
-		//printf("i=%d\n", i);
     center_x = location_x[i];
     center_y = location_y[i];
-    //cout << center_x << " " << center_y << "i=" << i << endl;
     new_x = center_x * cos(yaw_change) + center_y * sin(yaw_change) -displacement;
     new_y = -center_x * sin(yaw_change) + center_y * cos(yaw_change);
     location_x[i] = new_x;
     location_y[i] = new_y;
-    //cout << "update" << location_x[i] << " " << location_y[i] << "i=" << i << endl;    
   }
 	if (x != 9999 && y != 9999) {
+    // Use x = 9999, y = 9999 to equal to None type data in python.
   	location_x.push_back(x);
   	location_y.push_back(y);
 	}

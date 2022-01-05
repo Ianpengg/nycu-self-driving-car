@@ -1,10 +1,10 @@
 <launch>
     <node pkg="rviz"    type="rviz" name="rviz" args="-d $(find argo_tracking)/rviz_config/tracking_result_viz.rviz"/>
     
-    <arg name="scene_name"              default="0f0d7759-fa6e-3296-b528-6c862d061bdd"/>
-    <arg name="tracking_result_folder"  default="/home/ee904/argoverse_cbgs_kf_tracker/temp_files/test-split-track-preds-maxage10-minhits5-conf0.3"/>
-    <arg name="argo_data_folder"        default="/home/ee904/Downloads/tracking_test_v1.1/argoverse-tracking/test"/>
-    <arg name="detection_folder"        default="/home/ee904/argoverse_cbgs_kf_tracker/detections_v1.1b/argoverse_detections_2020/testing"/>
+    <arg name="scene_name"              default="00c561b9-2057-358d-82c6-5b06d76cebcf"/>
+    <arg name="tracking_result_folder"  default="/home/ee904/argoverse_cbgs_kf_tracker/temp_files/val-split-track-preds-maxage15-minhits5-conf0.3-thr0.09"/>
+    <arg name="argo_data_folder"        default="/home/ee904/Downloads/tracking_val_v1.1/argoverse-tracking/val"/>
+    <arg name="detection_folder"        default="/home/ee904/argoverse_cbgs_kf_tracker/detections_v1.1b/argoverse_detections_2020/validation"/>
     
     
     <!-- <node pkg ="argo_tracking"   type="viz_track_result" name="viz_result"   output="screen"> -->

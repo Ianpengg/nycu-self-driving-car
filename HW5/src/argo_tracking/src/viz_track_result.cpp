@@ -1,4 +1,9 @@
+//------------------------------------------------------------
 // visualize track result from output 
+// Edit from the code provided by 2021 self-driving-car's TA 
+// Editor: Ian peng
+// E-mail: ian01050.gmail.com
+//------------------------------------------------------------
 #include <iostream>
 #include <stdlib.h>
 #include <stdio.h>
@@ -54,23 +59,27 @@ int frame_count = 0;
 /*declare the id_type and a vector to record the id*/
 string id_type;
 vector <string> id_record;
-vector <int> label_id;
+/*
+Create an object to record the trakectories of each tracked car or pedestrian.
+
+*/
 class Object
 {
 public:
   string object_id;  //store the object_id
+	int track_id;
   float center_x, center_y, new_x, new_y;
   deque <float> location_x; //store the x position of object
   deque <float> location_y; // store the yposition of object
   
-  //void readdata();
   void update(float displacement, float yaw_change, double x, double y);
-  //void load_data(float x, float y);
 
 };
 
 void Object::update(float displacement, float yaw_change, double x, double y) {
-     
+  /*
+	Update the object's position 
+	*/
   for (int i =0; i<location_x.size(); i++) {
 		//printf("i=%d\n", i);
     center_x = location_x[i];
@@ -83,25 +92,29 @@ void Object::update(float displacement, float yaw_change, double x, double y) {
     //cout << "update" << location_x[i] << " " << location_y[i] << "i=" << i << endl;    
   }
 	if (x != 9999 && y != 9999) {
+    // Use x = 9999, y = 9999 to equal to None type data in python.
   	location_x.push_back(x);
   	location_y.push_back(y);
 	}
-  while (location_x.size() >=10) {
+  while (location_x.size() >=15) {
 		location_x.pop_front();
 		location_y.pop_front();
 	}
 };
+
+/*
+Object class for ego car, do the same things like the object above but something different in update function.
+*/
 class Object_ego
 {
 public:
   string object_id;  //store the object_id
+	string track_id;
   float center_x, center_y, new_x, new_y;
   deque <float> location_x; //store the x position of object
   deque <float> location_y; // store the yposition of object
   
-  //void readdata();
   void update(float displacement, float yaw_change);
-  //void load_data(float x, float y);
 
 };
 
@@ -125,17 +138,16 @@ void Object_ego::update(float displacement, float yaw_change) {
 		location_y.pop_front();
 	}
 };
-// void Object::load_data(float x, float y) {
-//   location_x.push_back(x);
-//   location_y.push_back(y);
-// }
+
 
 double distance(double x, double y, double z, double prev_x, double prev_y, double prev_z) {
 	return sqrt(pow((x - prev_x), 2) + pow((y - prev_y), 2) + pow((z - prev_z), 2));
 }
 
-
-double euler_from_quaternion(double w, double x, double y, double z) { // convert quaternion to rpy angle
+// Given (w, x, y, z)  
+// Return yaw value
+double euler_from_quaternion(double w, double x, double y, double z) {
+	 // convert quaternion to rpy angle
     double t3 = +2.0 * (w * z + x * y);
     double t4 = +1.0 - 2.0 * (y * y + z * z);
     double yaw_z = atan2(t3, t4);
@@ -144,10 +156,6 @@ double euler_from_quaternion(double w, double x, double y, double z) { // conver
 
 
 deque<Object> Tracker;
-
-
-
-
 
 
 void showAllFiles( const char * dir_name, int shit, vector<string>& filenames)
@@ -190,10 +198,6 @@ void showAllFiles( const char * dir_name, int shit, vector<string>& filenames)
         
         if( shit==0 )
             filenames.push_back(filename->d_name);
-        // else if ( shit==1 )
-        //     stereos_l.push_back(filename->d_name);
-        // else
-        //     stereos_r.push_back(filename->d_name);
         
     }   
 }
@@ -208,14 +212,8 @@ void sort_timestamp(vector<string> &filenames, vector<unsigned long int> &sorted
 		unsigned long int ts;
 		is >> ts;
 		sorted_names.push_back(ts);   //insert from last one element
-		//cout << sorted_plys.at(i) <<endl;
 	}
-	//sort(begin of array, end of array, sort_type(default is ascending))
 	sort(sorted_names.begin(), sorted_names.end());
-    // cout<<"\033[1;33mAfter sorting:\n\033[0m";
-	// for(i=0;i<sorted_names.size();i++)
-    //     cout<< i << " " << sorted_names[i]<<"\n";
-    // cout << "get out of function" << endl;
     return; 
 }
 
@@ -247,12 +245,13 @@ void initialize_marker(Json::Value label_array, Json::Value det_array, double di
 			for (int k =0; k < label_array.size(); k++) {
 				string track_label_uuid = label_array[k]["track_label_uuid"].asString(); //access the value inside the "track_label_uuid"
 				id_record.push_back(track_label_uuid);  //its function is like a python list append to last element
-				label_id.push_back(k);
+				
 				double center_x = label_array[k]["center"]["x"].asDouble();
 				double center_y = label_array[k]["center"]["y"].asDouble();
 				
 				
 				track_car[k].object_id = track_label_uuid;
+				track_car[k].track_id = k;
 				track_car[k].location_x.push_back(center_x);
 				track_car[k].location_y.push_back(center_y);
 
@@ -269,6 +268,7 @@ void initialize_marker(Json::Value label_array, Json::Value det_array, double di
 				if (find_id == id_record.end()) {// if find_id is the last element , vector needs to add new elements
 					id_record.push_back(track_label_uuid);
 					Object new_track;
+					new_track.track_id = (Tracker.back()).track_id +1;
 					new_track.object_id = track_label_uuid;
 					new_track.location_x.push_back(label_array[k]["center"]["x"].asDouble());
 					new_track.location_y.push_back(label_array[k]["center"]["y"].asDouble());
@@ -280,21 +280,12 @@ void initialize_marker(Json::Value label_array, Json::Value det_array, double di
 				
 					
 				}
-				// Debugg display
-
-
 
 			}
-			// for (int j = 0; j< Tracker.size();j++) {
-			// 	cout << "Tracker_id" << Tracker[j].object_id << "   "<< "ID_record=" << id_record[j] << endl;
-			// //cout << "the tracker has tracked" << Tracker.size() << "Object" << endl;
-			// }
-			// cout << "stop" << endl;
 			for (int i = 0; i < Tracker.size(); i++) {
 				string stored_id = Tracker[i].object_id;
 				deque<string>::iterator find_stored = find(track_id.begin(),track_id.end(),stored_id);
 				if (find_stored == track_id.end() ) {
-					//cout << "lost track" << endl;
 					Tracker[i].update(displacement, yaw_change, 9999,9999);
 				}
 			}
@@ -326,9 +317,7 @@ void initialize_marker(Json::Value label_array, Json::Value det_array, double di
 			for (int i = 0; i < Tracker.size(); i++) {
 				string stored_id_pub = Tracker[i].object_id;
 				if (stored_id_pub == label_array[m]["track_label_uuid"].asString()) {
-					//cout <<"Size" << Tracker[i].location_x.size() << endl;
 					for (int j = 0; j<Tracker[i].location_x.size(); j++) {
-						//cout << "X=" << Tracker[i].location_x[j] << "Y=" << Tracker[i].location_y[j] << endl;
 						p.x = Tracker[i].location_x[j];
 						p.y = Tracker[i].location_y[j];
 						p.z = 0;
@@ -338,27 +327,16 @@ void initialize_marker(Json::Value label_array, Json::Value det_array, double di
 					M_traj.markers.push_back(marker_obj_traj);
 
 				}
-				// deque<string>::iterator find_stored_pub = find(track_id.begin(),track_id.end(),stored_id_pub);
-				// if (find_stored_pub != track_id.end() ) {
-				// }
 			}
 			
 		}	
 		pub_traj.publish(M_traj);
-	
-		// }
-	
-	
-	
-	
-	
 	
 	
 	}
 	// detection
 	int counter = 0;
 	for (int m=0; m<det_array.size(); m++){
-		//cout << "m is" << m << endl;
 		float score = det_array[m]["score"].asDouble();
 		if (score < 0.3)
 			continue;
@@ -425,7 +403,7 @@ void initialize_marker(Json::Value label_array, Json::Value det_array, double di
 		marker.type = visualization_msgs::Marker::CUBE;
 		
 		marker.id = i;
-		
+	
 		marker.pose.position.x = label_array[i]["center"]["x"].asDouble();
 		marker.pose.position.y = label_array[i]["center"]["y"].asDouble();
 		marker.pose.position.z = label_array[i]["center"]["z"].asDouble();
@@ -476,20 +454,10 @@ void initialize_marker(Json::Value label_array, Json::Value det_array, double di
 		marker_id.pose.position.x = label_array[i]["center"]["x"].asDouble();
 		marker_id.pose.position.y = label_array[i]["center"]["y"].asDouble();
 		marker_id.pose.position.z = label_array[i]["center"]["z"].asDouble() + 1.0f;
-		//marker_id.text = "aaa";
-		if(! id_type.compare("uuid")){
-			for(int m=0; m<id_record.size(); m++){
-				if ( !( (track_label_uuid.second).compare(id_record.at(m))) ) {
-					marker_id.text = convertToString(m);
-					cout << marker_id.text << endl;
-				}
-			}
+		vector<string>::iterator find_poped = find(id_record.begin(), id_record.end(),label_array[i]["track_label_uuid"].asString());
+		if (find_poped != id_record.end()) {
+			marker_id.text = to_string(Tracker[find_poped-id_record.begin()].track_id);
 		}
-		else{
-			cout << "wrong" << endl;
-			marker_id.text = convertToString(track_label_uuid.first);
-		}
-
 		M_id.markers.push_back(marker_id);
 	}
 	cout << "We have " << M_id.markers.size() << " trackers \tat " << timestamp << endl;
@@ -531,7 +499,6 @@ void initialize_marker(Json::Value label_array, Json::Value det_array, double di
 		marker_det.scale.z = 0;
 		M_det.markers.push_back(marker_det);
 	}
-
 	pub_id.publish(M_id);
 	pub_label.publish(M_label);
 	pub_det.publish(M_det);
@@ -566,8 +533,6 @@ double* yaw_change, double previous_pose[3], double* previous_yaw, Object_ego &e
 	else {
 		*displacement = distance(p_x, p_y, p_z, previous_pose[0], previous_pose[1], previous_pose[2]);
 		*yaw_change = yaw - *previous_yaw;
-		//printf("yaw=%f", yaw);
-	  //printf("%f",*yaw_change);
 		ego_car.update(*displacement, *yaw_change);
 
 	}
@@ -668,7 +633,6 @@ int main(int argc, char** argv){
 		string label_log_path = label_path + "/per_sweep_annotations_amodal/tracked_object_labels_" + lidar_time + ".json";
 		string detection_path = det_path + "/per_sweep_annotations_amodal/tracked_object_labels_" + lidar_time + ".json";
 		string pose_path = log_path + "/poses/city_SE3_egovehicle_" + lidar_time + ".json";
-		cout << pose_path << endl;
 		pcl::PointCloud<PointT>::Ptr cloud (new pcl::PointCloud<PointT>);
 		if (pcl::io::loadPLYFile<PointT>(ply_path, *cloud) == -1){
             PCL_ERROR("Couldn't read ",lidar_time ," file.\n");
@@ -695,7 +659,6 @@ int main(int argc, char** argv){
 		}
 		M_ego.markers.clear();
 		M_traj.markers.clear();
-
 		M_id.markers.clear();
 		M_label.markers.shrink_to_fit();
 		M_label.markers.clear();
@@ -705,13 +668,10 @@ int main(int argc, char** argv){
 		cout << "At frame "<<frame_count++<<endl;		
 		ego_traj(pose_array,i,&displacement, &yaw_change, previous_pose, &previous_yaw, ego_car);
 		initialize_marker(label_array, det_array, displacement, yaw_change);
-		//cout.precision(6);
-		//cout << previous_yaw << endl;
 
 		sensor_msgs::PointCloud2 sensor_scan;
 		pcl::toROSMsg(*cloud,sensor_scan);
 		sensor_scan.header.frame_id = "scan";
-		// cout << cloud->points.size() << endl;
 		cout<<"We now at "<< lidar_time << "\nHave " << setw(5) << label_array.size() << " labels" << endl;
 		cout << "---------------------------------------------------" << endl;
 		pub_lidar.publish(sensor_scan);

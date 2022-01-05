@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+"""
+@Author: Ian peng
+@E-mail: ian01050@gmail.com
+@Date: 2021/1/5
+"""
 import numpy as np
 import re
 from scipy import optimize
@@ -100,7 +105,6 @@ def euler_from_quaternion(w,x, y, z):
 def string_split(data_path_list):
     """
     Get the timestemp of the list which contains file names
-
     Return :
     list contain only timestemp
     """
@@ -110,7 +114,11 @@ def string_split(data_path_list):
         #print(p[-1])
         time_stamp += [p[-1]]
     return time_stamp
+    
 def readJson(pose_files):
+    """
+    Read the json file and extract the translation and rotation informations.
+    """
     with open(pose_files) as f:
         pose_data = json.load(f)
         pose = np.array(pose_data['translation'])
@@ -119,3 +127,4 @@ def readJson(pose_files):
         # returns Json object as a dictionary
         
     return pose, y
+

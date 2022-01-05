@@ -35,7 +35,4 @@ add_executable(viz_track_result	src/viz_track_result.cpp)
 target_link_libraries(viz_track_result ${catkin_LIBRARIES} libjsoncpp.a) # add libjsoncpp.a
 
 
-add_executable(object	src/object.cpp)	
-target_link_libraries(object ${catkin_LIBRARIES} libjsoncpp.a)
-add_executable(viz_label	src/viz_label.cpp)	
-target_link_libraries(viz_label ${catkin_LIBRARIES} libjsoncpp.a)
+
